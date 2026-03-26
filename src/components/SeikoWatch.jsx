@@ -31,81 +31,90 @@ export default function SeikoWatch({ time }) {
     };
   }).filter(Boolean);
 
-  const mainNumerals = { 0: '12', 3: '3', 6: '6', 9: '9' };
+  // Sunburst lines radiating from center
+  const sunburstLines = Array.from({ length: 60 }, (_, i) => {
+    const angle = degToRad(i * 6);
+    return {
+      x1: CENTER,
+      y1: CENTER,
+      x2: CENTER + DIAL_RADIUS * Math.cos(angle),
+      y2: CENTER + DIAL_RADIUS * Math.sin(angle),
+    };
+  });
+
+  // Date window position (~3 o'clock, offset inward)
+  const dateAngle = degToRad(7); // slightly past 3 o'clock
+  const dateDist = MARKER_RADIUS - 10;
+  const dateX = CENTER + dateDist * Math.cos(dateAngle);
+  const dateY = CENTER + dateDist * Math.sin(dateAngle);
+  const currentDate = time ? new Date(time).getDate() : new Date().getDate();
 
   return (
     <div style={{ position: 'relative', width: SIZE, height: SIZE, userSelect: 'none' }}>
-      {/* Outer case */}
+      {/* Outer case — silver/steel */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           borderRadius: '50%',
           background:
-            'linear-gradient(135deg, #c0a870 0%, #e8d098 25%, #d4b878 50%, #b89050 75%, #caa870 100%)',
+            'linear-gradient(135deg, #b0b0b0 0%, #e8e8e8 25%, #d0d0d0 50%, #a8a8a8 75%, #c0c0c0 100%)',
           boxShadow:
-            '0 0 0 2px #7a6030, 0 10px 50px rgba(0,0,0,0.65), inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -2px 3px rgba(0,0,0,0.3)',
+            '0 0 0 2px #808080, 0 10px 50px rgba(0,0,0,0.65), inset 0 2px 3px rgba(255,255,255,0.6), inset 0 -2px 3px rgba(0,0,0,0.25)',
         }}
       />
 
-      {/* Dial */}
+      {/* Dial — deep emerald green */}
       <div
         style={{
           position: 'absolute',
           inset: DIAL_INSET,
           borderRadius: '50%',
-          background:
-            'linear-gradient(145deg, #faf6ec 0%, #f4edd8 50%, #ede0c0 100%)',
-          boxShadow: 'inset 0 3px 10px rgba(0,0,0,0.12)',
+          background: 'linear-gradient(145deg, #174d30 0%, #1a5c38 50%, #123f28 100%)',
+          boxShadow: 'inset 0 3px 10px rgba(0,0,0,0.3)',
+          overflow: 'hidden',
         }}
-      >
-        {/* Subtle radial sheen */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(ellipse at 30% 25%, rgba(255,255,255,0.35) 0%, transparent 55%)',
-          }}
-        />
-      </div>
+      />
 
-      {/* SVG layer — markers, text */}
+      {/* SVG layer — sunburst, markers, text, date */}
       <svg
         style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
       >
+        {/* Clip path for dial */}
+        <defs>
+          <clipPath id="dial-clip">
+            <circle cx={CENTER} cy={CENTER} r={DIAL_RADIUS} />
+          </clipPath>
+        </defs>
+
+        {/* Sunburst lines */}
+        <g clipPath="url(#dial-clip)">
+          {sunburstLines.map(({ x1, y1, x2, y2 }, i) => (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="rgba(255,255,255,0.07)"
+              strokeWidth={0.8}
+            />
+          ))}
+        </g>
+
         {/* Minute dots */}
         {minuteDots.map(({ x, y }, i) => (
-          <circle key={i} cx={x} cy={y} r={1.2} fill="#9a8a78" opacity={0.55} />
+          <circle key={i} cx={x} cy={y} r={1.2} fill="rgba(220,220,220,0.5)" />
         ))}
 
-        {/* Hour markers */}
+        {/* Hour markers — all baton indices, no numerals */}
         {hourMarkers.map(({ i, x, y }) => {
-          if (mainNumerals[i] !== undefined) {
-            return (
-              <text
-                key={i}
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={15}
-                fontWeight="600"
-                fontFamily="Georgia, 'Times New Roman', serif"
-                fill="#2e1e0e"
-                opacity={0.88}
-              >
-                {mainNumerals[i]}
-              </text>
-            );
-          }
-          // Thin rectangular tick
-          const tickLen = 10;
-          const tickW = 2;
+          const isMain = i % 3 === 0; // 12, 3, 6, 9 are larger
+          const tickLen = isMain ? 13 : 9;
+          const tickW = isMain ? 3 : 2;
           const angleDeg = i * 30;
           return (
             <rect
@@ -115,8 +124,8 @@ export default function SeikoWatch({ time }) {
               width={tickW}
               height={tickLen}
               rx={0.5}
-              fill="#5a4a36"
-              opacity={0.7}
+              fill="#e0e0e0"
+              opacity={0.9}
               transform={`rotate(${angleDeg}, ${x}, ${y})`}
             />
           );
@@ -130,9 +139,8 @@ export default function SeikoWatch({ time }) {
           fontSize={10}
           fontFamily="Georgia, serif"
           fontWeight="bold"
-          fill="#4a3828"
+          fill="rgba(255,255,255,0.9)"
           letterSpacing={4}
-          opacity={0.8}
         >
           SEIKO
         </text>
@@ -142,11 +150,45 @@ export default function SeikoWatch({ time }) {
           textAnchor="middle"
           fontSize={7}
           fontFamily="Georgia, serif"
-          fill="#7a6858"
+          fill="rgba(255,255,255,0.7)"
           letterSpacing={3}
-          opacity={0.7}
         >
           PRESAGE
+        </text>
+        <text
+          x={CENTER}
+          y={CENTER + 52}
+          textAnchor="middle"
+          fontSize={6}
+          fontFamily="Georgia, serif"
+          fill="rgba(255,255,255,0.55)"
+          letterSpacing={2}
+        >
+          AUTOMATIC
+        </text>
+
+        {/* Date window */}
+        <rect
+          x={dateX - 11}
+          y={dateY - 9}
+          width={22}
+          height={16}
+          rx={1.5}
+          fill="white"
+          stroke="#a0a0a0"
+          strokeWidth={0.8}
+        />
+        <text
+          x={dateX}
+          y={dateY + 1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={9}
+          fontWeight="600"
+          fontFamily="Arial, sans-serif"
+          fill="#111"
+        >
+          {currentDate}
         </text>
       </svg>
 
@@ -164,17 +206,17 @@ export default function SeikoWatch({ time }) {
           style={{
             hourWidth: 7,
             hourLength: '30%',
-            hourColor: '#22120a',
+            hourColor: '#d8d8d8',
             minuteWidth: 5,
             minuteLength: '40%',
-            minuteColor: '#22120a',
+            minuteColor: '#d8d8d8',
             secondWidth: 2,
             secondLength: '44%',
-            secondColor: '#c82a00',
+            secondColor: '#c8a030',
             capSize: 11,
-            capColor: '#22120a',
-            capBorder: '#8a6a4a',
-            handShadow: '1px 1px 4px rgba(0,0,0,0.3)',
+            capColor: '#d0d0d0',
+            capBorder: '#a0a0a0',
+            handShadow: '1px 1px 4px rgba(0,0,0,0.5)',
           }}
         />
       </div>
@@ -186,12 +228,12 @@ export default function SeikoWatch({ time }) {
           inset: DIAL_INSET,
           borderRadius: '50%',
           background:
-            'linear-gradient(130deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 40%, transparent 60%)',
+            'linear-gradient(130deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 40%, transparent 60%)',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Crown */}
+      {/* Crown — silver */}
       <div
         style={{
           position: 'absolute',
@@ -201,7 +243,7 @@ export default function SeikoWatch({ time }) {
           width: 13,
           height: 22,
           background:
-            'linear-gradient(90deg, #b89050, #e8d098, #c4a060, #e0c888, #b89050)',
+            'linear-gradient(90deg, #a0a0a0, #e0e0e0, #b8b8b8, #d8d8d8, #a0a0a0)',
           borderRadius: 3,
           boxShadow: '2px 0 5px rgba(0,0,0,0.5)',
         }}
